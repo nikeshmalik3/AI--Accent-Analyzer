@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accent Analysis Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0">Accent Analysis Results</h2>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-3">{{ video_title }}</h3>
+                        <p><strong>Video URL:</strong> <a href="{{ video_url }}" target="_blank">{{ video_url }}</a></p>
+                        
+                        <hr>
+                        
+                        <div class="text-center mb-4">
+                            <div class="accent-type">{{ accent_data.accent_classification }}</div>
+                            <p class="lead">English Accent Classification</p>
+                        </div>
+                        
+                        <h4>Confidence Score: {{ accent_data.confidence_score }}%</h4>
+                        <div class="confidence-meter">
+                            <div class="confidence-level {% if accent_data.confidence_score < 40 %}confidence-low{% elif accent_data.confidence_score < 70 %}confidence-medium{% else %}confidence-high{% endif %}" style="width: {{ accent_data.confidence_score }}%">
+                                {{ accent_data.confidence_score }}%
+                            </div>
+                        </div>
+                        
+                        <div class="explanation-box">
+                            <h4>Analysis Explanation:</h4>
+                            <p>{{ accent_data.explanation }}</p>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('index') }}" class="btn btn-primary">Analyze Another Video</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
