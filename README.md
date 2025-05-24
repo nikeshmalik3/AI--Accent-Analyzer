@@ -144,13 +144,15 @@ The application follows a clear and logical process:
     *   The AI's **confidence score**.
     *   A **detailed explanation** of the accent features.
 
-## 🎬 New Demo Video (Vimeo)
+## 🎬 Demo Video (from Repository via Git LFS)
 
-Check out the application in action with our updated demo:
+Check out the application in action with our demo video, hosted directly in this repository using Git LFS:
 
-<div style="padding:56.3% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1087284465?title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="WhatsApp Video 2025-05-21 at 21.05.52_3c6865ef"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+**➡️ [Watch Demo Video (MP4)](WhatsApp%20Video%202025-05-21%20at%2021.05.52_3c6865ef.mp4)**
 
-*(The previous demo video link using a local file or YouTube thumbnail has been replaced. Note: GitHub's Markdown rendering may not support direct HTML embedding for security reasons, so this might not display as a playable video on GitHub.)*
+*To view: Click the link above. GitHub will allow you to view or download the video. For the best viewing experience, downloading the MP4 file might be preferable.*
+
+*(Note: This video is stored using Git LFS. Ensure you have Git LFS installed if you are cloning and working with this repository locally and need to interact with the actual video file.)*
 
 
 ## 🔗 YouTube Videos Previously Referenced for Demo/Analysis
