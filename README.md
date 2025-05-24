@@ -1,193 +1,242 @@
-# English Accent Analyzer 🗣️🔍
+# 🇬🇧🎙️ English Accent Analyzer 🗣️🔍🌏
 
-This project is a web application that analyzes the English accent of a speaker from a video. Users can either upload a video file directly or provide a YouTube video URL. The application extracts the audio from the video, sends it to Google's Gemini API for accent analysis, and then displays the results, including the classified accent type, a confidence score, and an explanation.
+Welcome to the **English Accent Analyzer**! This web application leverages the power of Google's Gemini AI to analyze the English accent of a speaker from a video. Users can conveniently provide a video by either uploading a file directly 📤 or by pasting a YouTube/direct video URL 🔗. The application then processes the video, extracts the audio 🔊, sends it for AI-powered accent analysis, and presents a comprehensive report 📊 including the classified accent type, a confidence score, and a detailed explanation of the vocal characteristics.
 
-## ✨ Features
+## ✨ Core Features
 
-*   **Video Upload**: Supports direct video file uploads.
-*   **YouTube Video Support**: Allows users to analyze videos directly from YouTube URLs.
-*   **Automatic Audio Extraction**: Extracts audio from the provided video (MP4 format).
-*   **Accent Analysis with Gemini API**: Leverages Google's Gemini API for sophisticated accent classification and analysis.
-*   **Detailed Results**: Provides:
-    *   Accent Classification (e.g., American, British, Indian)
-    *   Confidence Score (0-100%) of the accent assessment.
-    *   Detailed Explanation of the accent characteristics.
-*   **User-Friendly Web Interface**: Simple and intuitive interface built with Flask and HTML/CSS/JavaScript.
-*   **Temporary File Management**: Cleans up temporary video and audio files.
+*   📥 **Flexible Video Input**:
+    *   Supports direct video file uploads (e.g., `.mp4`, `.mov`).
+    *   Accepts YouTube video URLs.
+    *   Handles direct video URLs from other sources.
+*   🔊 **Automatic Audio Extraction**: Seamlessly extracts the audio track from the input video using `ffmpeg`.
+*   🧠 **AI-Powered Accent Analysis**: Utilizes Google's Gemini API for sophisticated English accent classification.
+*   📊 **Detailed & Structured Results**: Provides clear and insightful feedback:
+    *   🗣️ **Accent Classification**: Identifies the type of English accent (e.g., American, British, Australian, Indian).
+    *   💯 **Confidence Score**: Rates the AI's confidence in its assessment (0-100%).
+    *   📝 **In-depth Explanation**: Offers a textual description of the accent's key characteristics and the reasoning behind the classification.
+*   🌐 **User-Friendly Web Interface**: A clean, intuitive, and responsive interface built with Flask and modern web technologies.
+*   ⏱️ **Temporary File Management**:
+    *   Automatically clears the temporary video upload directory (`temp_videos`) upon application startup.
+    *   Periodically cleans up old analysis result files (older than 1 hour) from the `outputs/temp` directory.
+*   🛡️ **Error Handling**: Gracefully handles potential issues during video download, audio extraction, and API communication, providing informative feedback to the user.
 
-## ⚙️ How It Works
+## ⚙️ Application Workflow: A Step-by-Step Guide
 
-1.  **User Input**: The user visits the web application and either:
-    *   Uploads a video file (e.g., `.mp4`).
-    *   Pastes a YouTube video URL.
-2.  **Video Processing**:
-    *   **Uploaded Video**: The video is saved to a temporary directory.
-    *   **YouTube Video**: The video is downloaded from the provided URL using `pytubefix` and saved to a temporary directory.
-3.  **Audio Extraction**: `ffmpeg` is used to extract the audio track (as an `.mp3` file) from the video.
-4.  **Gemini API Interaction**:
-    *   The extracted audio file is uploaded to the Gemini API.
-    *   A specifically crafted prompt instructs the Gemini model to analyze the speaker's English accent, focusing on pronunciation, rhythm, intonation, and distinctive features.
-    *   The API is configured to use function calling to return structured data: accent classification, confidence score, and an explanation.
-5.  **Results Display**: The analysis results received from the Gemini API are displayed on a results page in the web application.
-6.  **Cleanup**: Temporary video and audio files are deleted from the server.
+The application follows a clear and logical process:
 
-## 🛠️ Technologies Used
+1.  **🎬 User Provides Video**:
+    *   The user navigates to the application's homepage (`/`).
+    *   They input a video URL (YouTube or direct link) into the form or (previously, this feature might be adapted/removed based on current `app.py` which focuses on URL) upload a video file.
+2.  **⬇️ Video Acquisition & Preparation**:
+    *   The application receives the URL via a `POST` request to the `/analyze` endpoint.
+    *   **YouTube Videos**: If a YouTube URL is detected, `download_youtube_video()` uses the `pytubefix` library to download the video into the `temp_videos` folder. It selects the best available MP4 stream.
+    *   **Direct Video URLs**: For other URLs, `download_direct_video()` attempts to download the video using the `requests` library and saves it with a unique name in `temp_videos`.
+    *   A unique `session_id` is generated using `uuid.uuid4()` to track the user's request.
+3.  **🔊 Audio Extraction**:
+    *   The `extract_audio()` function is called with the path to the downloaded video.
+    *   `ffmpeg` (executed as a subprocess) is employed to strip the audio from the video and save it as an `.mp3` file in the same `temp_videos` directory.
+4.  **🤖 Accent Analysis via Gemini API**:
+    *   The `analyze_accent_with_gemini()` function takes the path to the extracted `.mp3` audio file.
+    *   **File Upload**: The audio file is uploaded to Google's Generative AI file service using `genai.upload_file()`.
+    *   **Processing Wait**: The application polls the status of the uploaded file using `genai.get_file()` until its state becomes `ACTIVE` (state code 2), indicating it's ready for processing.
+    *   **Function Declaration**: A `FunctionDeclaration` named `provide_accent_analysis` is defined. This tells the Gemini model the exact structure (parameters: `accent_classification`, `confidence_score`, `explanation`) in which to return its analysis. This ensures predictable and parsable output.
+    *   **Prompt Engineering**: A detailed prompt is sent to the Gemini model (`gemini-2.0-flash`). This prompt guides the AI to:
+        *   Identify the English accent type.
+        *   Provide a confidence score (0-100%) regarding native/fluent English speech.
+        *   Explain its reasoning, focusing on pronunciation, rhythm, intonation, and grammatical patterns.
+    *   **API Call**: The `model.generate_content()` method is invoked with the prompt, the uploaded audio file, and the `tools` (containing the function declaration).
+    *   **Response Parsing**: The structured data from the model's `function_call` (within the response) is extracted. The confidence score is validated to be within 0-100.
+5.  **💾 Storing Results**:
+    *   If the analysis is successful, the results (accent data, video title, original URL) are packaged into a dictionary.
+    *   This dictionary is then serialized using `pickle` and saved to a file named `{session_id}.pkl` within the `outputs/temp` directory.
+6.  **📈 Displaying Results**:
+    *   The user is redirected to the `/results` page.
+    *   The `results()` function retrieves the `session_id`.
+    *   It loads the pickled data from the corresponding `.pkl` file.
+    *   The data is then passed to the `results.html` template for rendering, displaying the accent analysis to the user.
+7.  **🧹 Automated Cleanup**:
+    *   `cleanup_temp_videos()`: Runs on application startup to clear any leftover files in the `temp_videos` (video upload) directory.
+    *   `cleanup_old_temp_files()`: Runs `@app.before_request`. This function checks the `outputs/temp` directory (where pickled results are stored) and deletes any `.pkl` files older than 1 hour (3600 seconds). This helps manage storage space.
 
-*   **Backend**:
-    *   Python
-    *   Flask (Web framework)
-    *   Google Generative AI SDK (`google-generativeai`) for Gemini API
-    *   `pytubefix` (for downloading YouTube videos)
-    *   `ffmpeg` (for audio extraction - requires separate installation)
-*   **Frontend**:
-    *   HTML
-    *   CSS
-    *   JavaScript
-*   **Environment Management**:
-    *   `python-dotenv` (for managing environment variables)
-*   **Key Python Libraries**: (See `requirements.txt` for a full list)
-    *   `Flask`
-    *   `google-generativeai`
-    *   `pytubefix`
-    *   `Werkzeug` (for file handling)
-    *   `requests`
+## 🛠️ Technologies & Libraries Powering the Analyzer
 
-## 🚀 Setup and Installation
+*   **🐍 Backend Framework**:
+    *   Flask (Python web framework)
+*   **☁️ AI & Cloud Services**:
+    *   Google Generative AI SDK (`google-generativeai`) for the Gemini API.
+*   **🎬 Video & Audio Processing**:
+    *   `pytubefix`: For robust downloading of YouTube videos.
+    *   `requests`: For downloading videos from direct URLs.
+    *   `ffmpeg`: The industry-standard tool for audio extraction (requires separate installation).
+    *   `subprocess`: To interact with `ffmpeg`.
+*   **📄 Data Handling & Utilities**:
+    *   `os`, `time`, `json`, `uuid`, `pickle` (Python standard libraries)
+    *   `werkzeug.utils.secure_filename`: For sanitizing filenames.
+    *   `python-dotenv`: For managing environment variables (like API keys).
+*   **🎨 Frontend**:
+    *   HTML5
+    *   CSS3
+    *   JavaScript (for any client-side interactions, though primarily server-rendered via Flask templates)
+*   **🪵 Logging**:
+    *   Python's `logging` module for application event tracking and debugging.
 
-1.  **Clone the Repository (if applicable)**:
+*(Refer to `requirements.txt` for a complete list of Python dependencies and their versions.)*
+
+## 🚀 Getting Started: Setup and Installation
+
+1.  **💾 Clone the Repository** (if you haven't already):
     ```bash
-    git clone <your-repository-url>
-    cd <repository-directory>
+    git clone https://github.com/nikeshmalik3/AI--Accent-Analyzer.git
+    cd AI--Accent-Analyzer
     ```
 
-2.  **Create a Virtual Environment**:
+2.  **🌳 Create and Activate a Python Virtual Environment**:
     ```bash
     python -m venv venv
     ```
-    *   On Windows:
-        ```bash
-        venv\Scripts\activate
-        ```
-    *   On macOS/Linux:
-        ```bash
-        source venv/bin/activate
-        ```
+    *   Windows: `venv\Scripts\activate`
+    *   macOS/Linux: `source venv/bin/activate`
 
-3.  **Install Dependencies**:
+3.  **📦 Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Install ffmpeg**:
-    `ffmpeg` is required for audio extraction and is not installed via pip. You need to install it separately and ensure it's in your system's PATH.
-    *   **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add the `bin` directory to your PATH.
-    *   **macOS**: `brew install ffmpeg`
-    *   **Linux**: `sudo apt update && sudo apt install ffmpeg`
+4.  **🔊 Install `ffmpeg`**:
+    This application relies on `ffmpeg` for audio extraction. It's a powerful multimedia framework that needs to be installed separately.
+    *   **Windows**: Download binaries from [ffmpeg.org](https://ffmpeg.org/download.html). Extract them and add the `bin` directory to your system's PATH environment variable.
+    *   **macOS** (using Homebrew): `brew install ffmpeg`
+    *   **Linux** (Debian/Ubuntu): `sudo apt update && sudo apt install ffmpeg`
+    Verify installation by typing `ffmpeg -version` in your terminal.
 
-5.  **Set Up Environment Variables**:
-    Create a `.env` file in the root directory of the project and add your Google Gemini API key:
+5.  **🔑 Set Up Environment Variables**:
+    Create a `.env` file in the project's root directory. This file will store sensitive information and configurations.
     ```env
-    GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-    SECRET_KEY="a_strong_random_secret_key_for_flask_sessions"
-    # Optional: Set max upload file size in MB (default is 200MB)
+    GEMINI_API_KEY="YOUR_GOOGLE_GEMINI_API_KEY"
+    SECRET_KEY="YOUR_FLASK_SECRET_KEY"
+    # Optional: Adjust maximum file size for uploads (default is 200MB)
     # MAX_FILE_SIZE=200
     ```
-    Replace `"YOUR_GEMINI_API_KEY"` with your actual API key. You can generate a `SECRET_KEY` using `python -c 'import os; print(os.urandom(24).hex())'`.
+    *   Replace `YOUR_GOOGLE_GEMINI_API_KEY` with your actual key from Google AI Studio.
+    *   Generate a strong `SECRET_KEY` for Flask sessions (e.g., run `python -c "import os; print(os.urandom(24).hex())"` in your terminal).
 
-6.  **Run the Application**:
+6.  **▶️ Run the Application**:
     ```bash
     flask run
     ```
-    Or, for development mode:
+    Or, for development mode with debugging (as per `app.py`):
     ```bash
     python app.py
     ```
-    The application will typically be available at `http://127.0.0.1:5000/`.
+    The application will typically be accessible at `http://127.0.0.1:5001/` (note the port 5001 from your `app.py`).
 
-## 📖 Usage
+## 📖 How to Use the Analyzer
 
-1.  Open your web browser and navigate to the application's URL (e.g., `http://127.0.0.1:5000/`).
-2.  You will see two options:
-    *   **Upload a Video File**: Click "Choose File", select your video, and click "Analyze Video File".
-    *   **Enter YouTube URL**: Paste the YouTube video URL into the input field and click "Analyze YouTube Video".
-3.  Wait for the analysis to complete. This may take some time depending on the video length and API response time.
-4.  The results page will display the accent classification, confidence score, and a detailed explanation.
+1.  Open your favorite web browser 🌐.
+2.  Navigate to the application's URL (e.g., `http://127.0.0.1:5001/`).
+3.  On the homepage, you'll find an input field:
+    *   **Enter Video URL**: Paste a YouTube video URL (e.g., `https://www.youtube.com/watch?v=dQw4w9WgXcQ`) or a direct link to a video file (e.g., `https://example.com/myvideo.mp4`).
+4.  Click the "Analyze Video" (or similar) button.
+5.  ⏳ Please be patient! The analysis involves video download, audio extraction, and AI processing, which can take some time depending on video length and server load.
+6.  Once complete, you'll be redirected to the results page, showcasing:
+    *   The **video title**.
+    *   The **classified accent**.
+    *   The AI's **confidence score**.
+    *   A **detailed explanation** of the accent features.
 
-## 🎬 Demo Video
+## 🎬 New Demo Video (Vimeo)
 
-A demonstration of the application in action can be found here:
+Check out the application in action with our updated demo:
 
-[![Watch the Demo Video](https://img.youtube.com/vi/MttW2lFnhKw/0.jpg)](WhatsApp%20Video%202025-05-21%20at%2021.05.52_3c6865ef.mp4)
+<div style="padding:56.3% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1087284465?title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="WhatsApp Video 2025-05-21 at 21.05.52_3c6865ef"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
-*(If the image link doesn't work, please ensure the video file `WhatsApp Video 2025-05-21 at 21.05.52_3c6865ef.mp4` is in the root directory or update the path accordingly. For a web-hosted README, you might need to upload the video to a service like YouTube and link it).*
-
-Alternatively, you can link to the video directly:
-[Link to Demo Video](WhatsApp%20Video%202025-05-21%20at%2021.05.52_3c6865ef.mp4)
+*(The previous demo video link using a local file or YouTube thumbnail has been replaced. Note: GitHub's Markdown rendering may not support direct HTML embedding for security reasons, so this might not display as a playable video on GitHub.)*
 
 
-## 🔗 YouTube Videos Analyzed in Demo
+## 🔗 YouTube Videos Previously Referenced for Demo/Analysis
 
-The following YouTube videos were used for demonstration and analysis in the project or its development:
+The following YouTube videos were mentioned in earlier development or demonstration contexts:
 
 1.  [https://www.youtube.com/watch?v=MttW2lFnhKw](https://www.youtube.com/watch?v=MttW2lFnhKw)
 2.  [https://www.youtube.com/watch?v=AmC9SmCBUj4](https://www.youtube.com/watch?v=AmC9SmCBUj4)
 3.  [https://www.youtube.com/watch?v=NsyI9LIXbFM](https://www.youtube.com/watch?v=NsyI9LIXbFM)
 
-## 📄 Code Overview (`app.py`)
+## 📄 Code Deep Dive (`app.py`)
 
-The main application logic is contained in `app.py`. Here's a breakdown of its key components:
+The heart of the application, `app.py`, orchestrates the entire process. Here's a summary of its main sections:
 
-*   **Initialization**:
-    *   Imports necessary libraries (Flask, Pytube, Gemini API, os, etc.).
-    *   Sets up logging.
-    *   Loads environment variables (API key, secret key).
-    *   Configures the Flask app (upload folder, output folder, max file size).
-    *   Initializes the Gemini API with the API key.
-    *   Includes a `cleanup_temp_videos()` function to clear the `temp_videos` directory on startup.
+*   **🔵 Initial Setup & Configuration**:
+    *   Imports: `Flask`, `google.generativeai`, `pytubefix`, `requests`, `os`, `time`, `uuid`, `pickle`, etc.
+    *   Logging: Basic logging is configured to INFO level.
+    *   Environment: `load_dotenv()` loads API keys and other secrets.
+    *   Flask App: `app = Flask(__name__)` initializes the web server.
+    *   Configuration: Sets `SECRET_KEY`, `UPLOAD_FOLDER` (`temp_videos`), `OUTPUT_FOLDER` (`outputs`), and `MAX_CONTENT_LENGTH`.
+    *   Directory Creation: Ensures `temp_videos` and `outputs` directories exist.
+    *   Gemini API: `genai.configure()` sets up the API key.
+    *   Startup Cleanup: `cleanup_temp_videos()` is called to empty the upload directory.
 
-*   **Helper Functions**:
-    *   `download_youtube_video(youtube_url)`: Downloads a video from a given YouTube URL using `pytubefix`. Handles various exceptions like `RegexMatchError`, `VideoUnavailable`, and general `PytubeError`.
-    *   `extract_audio(video_path)`: Uses `ffmpeg` (via `subprocess`) to extract the audio from a video file and saves it as an MP3.
+*   **🛠️ Core Helper Functions**:
+    *   `download_youtube_video(youtube_url)`:
+        *   Uses `pytubefix.YouTube` to fetch and download MP4 streams.
+        *   Includes User-Agent headers to mitigate 403 errors.
+        *   Returns a dictionary with `success`, `file_path`, and `title`.
+        *   Handles `RegexMatchError`, `VideoUnavailable`, `PytubeError`, and `requests.exceptions.HTTPError`.
+    *   `download_direct_video(url)`:
+        *   Downloads content from any direct video URL using `requests.get(url, stream=True)`.
+        *   Saves with a unique UUID-based filename.
+        *   Returns `success`, `file_path`, and a title derived from the URL.
+    *   `extract_audio(video_path)`:
+        *   Constructs an `ffmpeg` command (`ffmpeg -y -i <video_path> -q:a 0 -map a <audio_path.mp3>`).
+        *   Runs it using `subprocess.run(cmd, check=True)`.
+        *   Returns the path to the `.mp3` file.
     *   `analyze_accent_with_gemini(audio_path)`:
-        *   Uploads the extracted audio file to the Gemini API.
-        *   Waits for the file to be processed by the API.
-        *   Defines a function declaration (`provide_accent_analysis`) for structured output from the Gemini model. This tells the model what information to return (accent classification, confidence score, explanation).
-        *   Constructs a detailed prompt for the Gemini model, instructing it on how to analyze the accent and what criteria to use.
-        *   Calls the Gemini API (`gemini-pro-vision` model is used, but for audio-only, a text-based model with audio input capability like `gemini-2.0-flash` as seen in the code is more appropriate) with the prompt and the uploaded audio file.
-        *   Parses the structured response from the API.
-    *   `download_direct_video(url)`: A placeholder or utility function, potentially for direct video downloads (not fully implemented or used in the primary accent analysis flow in the provided snippet).
+        *   Uploads audio: `genai.upload_file(path=audio_path)`.
+        *   Polls file status: `genai.get_file()` in a loop until `doc.state == 2` (ACTIVE).
+        *   Defines `accent_analysis_function` (a `genai.types.FunctionDeclaration`) to structure the AI's output (accent, confidence, explanation).
+        *   Crafts a detailed `prompt` for the "gemini-2.0-flash" model.
+        *   Generates content: `model.generate_content([prompt, uploaded_file], tools=...)`.
+        *   Extracts structured arguments from `response.candidates[0].content.parts[0].function_call.args`.
+        *   Validates and sanitizes `confidence_score`.
+        *   Returns a dictionary with `success` and `accent_data`.
 
-*   **Flask Routes**:
-    *   `@app.route('/')`:
-        *   `index()`: Renders the main page (`index.html`) where users can upload videos or submit YouTube URLs.
-    *   `@app.route('/analyze', methods=['POST'])`:
-        *   `analyze()`: This is the core endpoint for handling analysis requests.
-            *   Determines if the input is a file upload or a YouTube URL.
-            *   If a file upload: secures the filename, saves the file, and checks its size.
-            *   If a YouTube URL: calls `download_youtube_video()`.
-            *   If video processing (upload/download) is successful, it proceeds to:
-                1.  Extract audio using `extract_audio()`.
-                2.  Analyze the accent using `analyze_accent_with_gemini()`.
-                3.  Stores the results (title, analysis data) in the Flask `session`.
-                4.  Redirects to the `results` page.
-            *   Handles various errors and flashes messages to the user.
-    *   `@app.route('/results')`:
-        *   `results()`: Retrieves the analysis results from the session and renders the `results.html` page to display them. If no results are found in the session, it redirects back to the home page.
-    *   `@app.before_request`:
-        *   `cleanup_old_temp_files()`: This function is intended to run before each request to clean up old files in the temporary directory, though the implementation details for "old" files (e.g., based on timestamp) are not shown in the initial snippet (the startup cleanup handles current files).
+*   **🌐 Flask Routes (Endpoints)**:
+    *   `@app.route('/') def index()`:
+        *   Renders `templates/index.html`.
+    *   `@app.route('/analyze', methods=['POST']) def analyze()`:
+        *   Handles the form submission from `index.html`.
+        *   Retrieves `video_url`.
+        *   Generates `session_id = str(uuid.uuid4())` and stores it in `session['session_id']`.
+        *   Calls `download_youtube_video` or `download_direct_video` based on URL.
+        *   Calls `extract_audio`.
+        *   Calls `analyze_accent_with_gemini`.
+        *   If all successful:
+            *   Creates `outputs/temp` directory if needed.
+            *   Pickles a dictionary containing `accent_data`, `video_title`, and `video_url` into `outputs/temp/{session_id}.pkl`.
+            *   Redirects to `url_for('results')`.
+        *   Flashes error messages on failure and redirects to `index`.
+    *   `@app.route('/results') def results()`:
+        *   Retrieves `session_id` from the Flask `session`.
+        *   Constructs the path to the `.pkl` file in `outputs/temp`.
+        *   Loads the pickled data.
+        *   Renders `templates/results.html`, passing the loaded data to the template.
+        *   Handles cases where `session_id` or the data file is missing.
+    *   `@app.before_request def cleanup_old_temp_files()`:
+        *   Iterates through files in `outputs/temp`.
+        *   Deletes any file older than 1 hour (`os.path.getmtime(file_path) < current_time - 3600`).
 
-*   **Error Handling**: The application includes error handling for file uploads (size, type), YouTube video downloads, audio extraction, and API interactions, providing feedback to the user via flashed messages.
+*   **🚦 Main Execution Block**:
+    *   `if __name__ == '__main__': app.run(debug=True, port=5001)`: Starts the Flask development server on port 5001 with debugging enabled.
 
-## ⚠️ Important Warning
+## ⚠️ Important Warning & Code Usage Policy
 
-**This code is provided for demonstration and educational purposes related to a specific project or assessment.**
+**This codebase is provided strictly for demonstration and educational purposes related to a specific project or academic assessment.**
 
-*   **DO NOT REUSE OR COPY THIS CODE** for other assignments, projects, or any commercial/non-commercial purposes without explicit permission.
-*   The code may contain specific solutions tailored to the requirements of this particular task.
-*   Attempting to submit this code, in whole or in part, as your own work for another purpose may constitute plagiarism or academic dishonesty.
+*   🛑 **DO NOT REUSE, COPY, OR REDISTRIBUTE THIS CODE** for any other assignments, personal projects, commercial ventures, or non-commercial activities without obtaining explicit prior permission.
+*   💡 The solutions herein are tailored to the unique requirements of this specific task and may not be suitable for other applications.
+*   🎓 Submitting this code, either in its entirety or in part, as your own original work for any other purpose is a violation of academic integrity and may be considered plagiarism.
 
-Please respect the intellectual effort involved in creating this solution.
+Your respect for the intellectual effort invested in this project is greatly appreciated. Please use it responsibly and ethically.
 
 ---
 
-This `README.md` should provide a good starting point. You can further customize it with more specific details, screenshots of the UI if you wish, or refine any sections as needed. 
+This updated `README.md` aims to be more visually appealing, comprehensive, and directly reflective of your `app.py`. Feel free to suggest further refinements! 
