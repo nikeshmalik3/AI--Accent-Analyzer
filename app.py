@@ -39,7 +39,7 @@ def cleanup_temp_videos():
 cleanup_temp_videos()
 
 # Configure the Gemini API
-genai.configure(api_key=os.getenv('GEMINI_API_KEY', 'AIzaSyDT4wQcl20qH-R8VWNW4dfBZort9tF_eUQ')) # i have already delete the api key 😊
+genai.configure(api_key=os.getenv('GEMINI_API_KEY', '#')) # i have already delete the api key 😊
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'development_key')
